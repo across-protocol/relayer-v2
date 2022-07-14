@@ -4,8 +4,12 @@ import { RelayerRefundLeafWithGroup, RunningBalances, UnfilledDeposit } from "..
 import { buildPoolRebalanceLeafTree, buildRelayerRefundTree, buildSlowRelayTree } from "../utils";
 import { getDepositPath, getFillsInRange, groupObjectCountsByProp, groupObjectCountsByTwoProps, toBN } from "../utils";
 import { DataworkerClients } from "./DataworkerClientHelper";
-import { addSlowFillsToRunningBalances, initializeRunningBalancesFromRelayerRepayments } from "./PoolRebalanceUtils";
-import { addLastRunningBalance, constructPoolRebalanceLeaves } from "./PoolRebalanceUtils";
+import {
+  addSlowFillsToRunningBalances,
+  addToRunningBalance,
+  initializeRunningBalancesFromRelayerRepayments,
+} from "./PoolRebalanceUtils";
+import { constructPoolRebalanceLeaves } from "./PoolRebalanceUtils";
 import { updateRunningBalanceForDeposit } from "./PoolRebalanceUtils";
 import { subtractExcessFromPreviousSlowFillsFromRunningBalances } from "./PoolRebalanceUtils";
 import { getAmountToReturnForRelayerRefundLeaf } from "./RelayerRefundUtils";
@@ -269,8 +273,8 @@ export function _buildPoolRebalanceRoot(
   });
 
   // Add to the running balance value from the last valid root bundle proposal for {chainId, l1Token}
-  // combination if found.
-  addLastRunningBalance(endBlockForMainnet, runningBalances, clients.hubPoolClient);
+  // combination if found. This will add a configurable bias value if there is no prior running balance.
+  addToRunningBalance(endBlockForMainnet, runningBalances, clients.hubPoolClient, clients.configStoreClient);
 
   const leaves: PoolRebalanceLeaf[] = constructPoolRebalanceLeaves(
     endBlockForMainnet,
