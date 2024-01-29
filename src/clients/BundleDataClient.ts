@@ -1,8 +1,10 @@
+import assert from "assert";
 import * as _ from "lodash";
 import {
   DepositWithBlock,
   FillsToRefund,
   FillWithBlock,
+  InvalidFill,
   ProposedRootBundle,
   UnfilledDeposit,
   UnfilledDepositsForOriginChain,
@@ -37,6 +39,7 @@ type DataCacheValue = {
   unfilledDeposits: UnfilledDeposit[];
   fillsToRefund: FillsToRefund;
   allValidFills: FillWithBlock[];
+  allInvalidFills: InvalidFill[];
   deposits: DepositWithBlock[];
   earlyDeposits: typechain.FundsDepositedEvent[];
 };
@@ -175,6 +178,7 @@ export class BundleDataClient {
     unfilledDeposits: UnfilledDeposit[];
     fillsToRefund: FillsToRefund;
     allValidFills: FillWithBlock[];
+    allInvalidFills: InvalidFill[];
     deposits: DepositWithBlock[];
     earlyDeposits: typechain.FundsDepositedEvent[];
   }> {
@@ -189,6 +193,7 @@ export class BundleDataClient {
     }
     return this._loadData(blockRangesForChains, spokePoolClients, isUBA, logData);
   }
+
   async _loadData(
     blockRangesForChains: number[][],
     spokePoolClients: { [chainId: number]: SpokePoolClient },
@@ -198,6 +203,7 @@ export class BundleDataClient {
     unfilledDeposits: UnfilledDeposit[];
     fillsToRefund: FillsToRefund;
     allValidFills: FillWithBlock[];
+    allInvalidFills: InvalidFill[];
     deposits: DepositWithBlock[];
     earlyDeposits: typechain.FundsDepositedEvent[];
   }> {
@@ -224,7 +230,7 @@ export class BundleDataClient {
     const allRelayerRefunds: { repaymentChain: number; repaymentToken: string }[] = [];
     const deposits: DepositWithBlock[] = [];
     const allValidFills: FillWithBlock[] = [];
-    const allInvalidFills: FillWithBlock[] = [];
+    const allInvalidFills: InvalidFill[] = [];
     const earlyDeposits: typechain.FundsDepositedEvent[] = [];
 
     // Save refund in-memory for validated fill.
@@ -288,7 +294,8 @@ export class BundleDataClient {
         if (historicalDeposit.found) {
           addRefundForValidFill(fill, historicalDeposit.deposit, blockRangeForChain);
         } else {
-          allInvalidFills.push(fill);
+          assert(historicalDeposit.found === false); // Help tsc to narrow the discriminated union type.
+          allInvalidFills.push({ fill, code: historicalDeposit.code, reason: historicalDeposit.reason });
         }
       }
     };
@@ -421,7 +428,14 @@ export class BundleDataClient {
       });
     }
 
-    this.loadDataCache[key] = { fillsToRefund, deposits, unfilledDeposits, allValidFills, earlyDeposits };
+    this.loadDataCache[key] = {
+      fillsToRefund,
+      deposits,
+      unfilledDeposits,
+      allValidFills,
+      allInvalidFills,
+      earlyDeposits,
+    };
 
     return this.loadDataFromCache(key);
   }

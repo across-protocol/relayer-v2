@@ -1306,7 +1306,7 @@ describe("Dataworker: Build merkle roots", async function () {
           },
         ]);
 
-        const blockRanges = dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
+        const blockRanges = await dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
         if (!blockRanges) {
           throw new Error("Can't propose new bundle");
         }
@@ -1333,7 +1333,7 @@ describe("Dataworker: Build merkle roots", async function () {
         ).to.be.true;
       });
       it("0 flows", async function () {
-        const blockRanges = dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
+        const blockRanges = await dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
         if (!blockRanges) {
           throw new Error("Can't propose new bundle");
         }
@@ -1537,7 +1537,7 @@ describe("Dataworker: Build merkle roots", async function () {
           },
         ]);
 
-        const blockRanges = dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
+        const blockRanges = await dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
         if (!blockRanges) {
           throw new Error("Can't propose new bundle");
         }
@@ -1734,7 +1734,7 @@ describe("Dataworker: Build merkle roots", async function () {
           },
         ]);
 
-        const blockRanges = dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
+        const blockRanges = await dataworkerInstance._getNextProposalBlockRanges(spokePoolClients);
         if (!blockRanges) {
           throw new Error("Can't propose new bundle");
         }
