@@ -1,6 +1,6 @@
 import { utils as sdkUtils } from "@across-protocol/sdk-v2";
 import { utils as ethersUtils } from "ethers";
-import { L1Token, V3Deposit, V3DepositWithBlock } from "../interfaces";
+import { FillStatus, L1Token, V3Deposit, V3DepositWithBlock } from "../interfaces";
 import {
   BigNumber,
   bnZero,
@@ -243,7 +243,12 @@ export class Relayer {
   // c) the fill is profitable.
   // If all hold true then complete the fill. If there is insufficient balance to complete the fill and slow fills are
   // enabled then request a slow fill instead.
-  async evaluateFill(deposit: V3DepositWithBlock, maxBlockNumber: number, sendSlowRelays: boolean): Promise<void> {
+  async evaluateFill(
+    deposit: V3DepositWithBlock,
+    fillStatus: number,
+    maxBlockNumber: number,
+    sendSlowRelays: boolean
+  ): Promise<void> {
     const { depositId, depositor, recipient, destinationChainId, originChainId, inputToken, outputAmount } = deposit;
     const { hubPoolClient, profitClient, tokenClient } = this.clients;
     const { slowDepositors } = this.config;
@@ -263,17 +268,13 @@ export class Relayer {
     }
 
     // If depositor is on the slow deposit list, then send a zero fill to initiate a slow relay and return early.
-    if (slowDepositors?.includes(depositor)) {
-      if (sendSlowRelays) {
-        this.logger.debug({
-          at: "Relayer",
-          message: "Initiating slow fill for grey listed depositor",
-          depositor,
-        });
-        this.requestSlowFill(deposit);
-      }
-      // Regardless of whether we should send a slow fill or not for this depositor, exit early at this point
-      // so we don't fast fill an already slow filled deposit from the slow fill-only list.
+    if (slowDepositors?.includes(depositor) && fillStatus === FillStatus.Unfilled) {
+      this.logger.debug({
+        at: "Relayer",
+        message: "Initiating slow fill for grey listed depositor",
+        depositor,
+      });
+      this.requestSlowFill(deposit);
       return;
     }
 
@@ -307,7 +308,7 @@ export class Relayer {
       // TokenClient.getBalance returns that we don't have enough balance to submit the fast fill.
       // At this point, capture the shortfall so that the inventory manager can rebalance the token inventory.
       tokenClient.captureTokenShortfallForFill(deposit, outputAmount);
-      if (sendSlowRelays) {
+      if (sendSlowRelays && fillStatus === FillStatus.Unfilled) {
         this.requestSlowFill(deposit);
       }
     }
@@ -323,7 +324,7 @@ export class Relayer {
     // Fetch unfilled deposits and filter out deposits upfront before we compute the minimum deposit confirmation
     // per chain, which is based on the deposit volume we could fill.
     const unfilledDeposits = await this._getUnfilledDeposits();
-    const allUnfilledDeposits = unfilledDeposits.map(({ deposit }) => deposit);
+    const allUnfilledDeposits = unfilledDeposits.map(({ deposit, fillStatus }) => ({ ...deposit, fillStatus }));
     this.logger.debug({
       at: "Relayer#checkForUnfilledDepositsAndFill",
       message: `${allUnfilledDeposits.length} unfilled deposits found.`,
@@ -333,10 +334,10 @@ export class Relayer {
     }
 
     const mdcPerChain = this.computeRequiredDepositConfirmations(allUnfilledDeposits);
-    for (const deposit of allUnfilledDeposits) {
+    for (const { fillStatus, ...deposit } of allUnfilledDeposits) {
       const { originChainId } = deposit;
       const maxBlockNumber = spokePoolClients[originChainId].latestBlockSearched - mdcPerChain[originChainId];
-      await this.evaluateFill(deposit, maxBlockNumber, sendSlowRelays);
+      await this.evaluateFill(deposit, fillStatus, maxBlockNumber, sendSlowRelays);
     }
 
     // If during the execution run we had shortfalls or unprofitable fills then handel it by producing associated logs.
