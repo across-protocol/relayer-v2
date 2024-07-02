@@ -34,42 +34,36 @@ export const FINALIZER_TOKENBRIDGE_LOOKBACK = 14 * 24 * 60 * 60;
 // block. This would cause the relayer to unintentionally send an invalid fill and not refunded. The tradeoff is that
 // the larger the follow distance, the slower the relayer will be to fulfill deposits. Therefore, the following
 // configuration allows the user to set higher follow distances for higher deposit amounts.
-// The Key of the following dictionary is used as the USD threshold to determine the MDC:
+// The key of the following dictionary is used as the USD threshold to determine the MDC:
 // - Searching from highest USD threshold to lowest
-// - If the key value is >= deposited USD amount, then use the MDC associated with the key for the origin chain
-// - If no key values are >= depostied USD amount, use the "default" value for the origin chain
-// - For example, a deposit on Polygon worth $90 would use the MDC associated with the 100 key and chain
-// 137, so it would use a follow distance of 80 blocks, while a deposit on Polygon for $110 would use 1000
-// key. A deposit of $1100 would use the "default" key
-
+// - If the key is >= deposited USD amount, then use the MDC associated with the key for the origin chain
+// - If no keys are >= depostied USD amount, ignore the deposit.
 // To see the latest block reorg events go to:
 // - Ethereum: https://etherscan.io/blocks_forked
 // - Polygon: https://polygonscan.com/blocks_forked
-
 // Optimistic Rollups are currently centrally serialized and are not expected to reorg. Technically a block on an
 // ORU will not be finalized until after 7 days, so there is little difference in following behind 0 blocks versus
 // anything under 7 days.
-export const DEFAULT_MIN_DEPOSIT_CONFIRMATIONS = {
-  [CHAIN_IDs.MAINNET]: 64, // Finalized block: https://www.alchemy.com/overviews/ethereum-commitment-levels
-  [CHAIN_IDs.OPTIMISM]: 120,
-  [CHAIN_IDs.POLYGON]: 128, // Commonly used finality level for CEX's that accept Polygon deposits
-  [CHAIN_IDs.BOBA]: 0,
-  [CHAIN_IDs.ZK_SYNC]: 120,
-  [CHAIN_IDs.LISK]: 120, // Same as other OVM. Hard finality is 1800 blocks
-  [CHAIN_IDs.BASE]: 120,
-  [CHAIN_IDs.MODE]: 120,
-  [CHAIN_IDs.ARBITRUM]: 0,
-  [CHAIN_IDs.LINEA]: 30,
-  // Testnets:
-  [CHAIN_IDs.MODE_SEPOLIA]: 0,
-  [CHAIN_IDs.POLYGON_AMOY]: 0,
-  [CHAIN_IDs.BASE_SEPOLIA]: 0,
-  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 0,
-  [CHAIN_IDs.SEPOLIA]: 0,
-  [CHAIN_IDs.OPTIMISM_SEPOLIA]: 0,
-  [CHAIN_IDs.LISK_SEPOLIA]: 0,
-};
 export const MIN_DEPOSIT_CONFIRMATIONS: { [threshold: number | string]: { [chainId: number]: number } } = {
+  // Defaults for testnets.
+  [Number.MAX_SAFE_INTEGER]: {
+    [CHAIN_IDs.MODE_SEPOLIA]: 1,
+    [CHAIN_IDs.POLYGON_AMOY]: 1,
+    [CHAIN_IDs.BASE_SEPOLIA]: 1,
+    [CHAIN_IDs.ARBITRUM_SEPOLIA]: 1,
+    [CHAIN_IDs.SEPOLIA]: 1,
+    [CHAIN_IDs.OPTIMISM_SEPOLIA]: 1,
+  },
+  10000: {
+    [CHAIN_IDs.MAINNET]: 64, // Finalized block: https://www.alchemy.com/overviews/ethereum-commitment-levels
+    [CHAIN_IDs.OPTIMISM]: 120,
+    [CHAIN_IDs.POLYGON]: 128, // Commonly used finality level for CEX's that accept Polygon deposits
+    [CHAIN_IDs.ZK_SYNC]: 120,
+    [CHAIN_IDs.BASE]: 120,
+    [CHAIN_IDs.MODE]: 120,
+    [CHAIN_IDs.ARBITRUM]: 0,
+    [CHAIN_IDs.LINEA]: 30,
+  },
   1000: {
     [CHAIN_IDs.MAINNET]: 32, // Justified block
     [CHAIN_IDs.OPTIMISM]: 60,
